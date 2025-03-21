@@ -1,0 +1,37 @@
+{
+  "name": "mcp-postgresql",
+  "version": "1.0.0",
+  "description": "MCP-PostgreSQL",
+  "type": "module",
+  "bin": {
+    "weather": "./build/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc && chmod 755 build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alessandroperetti/MCP-PostgreSQL.git"
+  },
+  "keywords": [],
+  "author": "Alessandro Peretti",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alessandroperetti/MCP-PostgreSQL/issues"
+  },
+  "homepage": "https://github.com/alessandroperetti/MCP-PostgreSQL#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "pg": "^8.14.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.11",
+    "@types/pg": "^8.11.11",
+    "typescript": "^5.8.2"
+  }
+}
