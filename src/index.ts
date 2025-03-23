@@ -80,7 +80,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (query) => {
         "role": "user",
         "content": {
           "type": "text",
-          "text": "Add always in the sql query the schema of the table in order to provide a context for the query"
+          "text": "Add always in the sql query the schema of the table in order to provide a context"
         }
       }
     ]
@@ -92,15 +92,17 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
   const client = await pool.connect();
   try {
     const result = await client.query([
-      "SELECT table_name AS name, table_schema AS schema",
-      "FROM information_schema.tables"].join(" "),
-    );
+      "SELECT schema_name AS name",
+      "FROM information_schema.schemata",
+      "WHERE schema_name NOT LIKE 'pg_%'",
+      "ORDER BY schema_name"
+    ].join(" "));
     return {
       resources: result.rows.map((row) => ({
-        uri: new URL(`${row.name}/${SCHEMA_PATH}/${row.schema}`, resourceBaseUrl).href,
+        uri: new URL(`${row.name}/${SCHEMA_PATH}`, resourceBaseUrl).href,
         mimeType: "application/json",
-        name: `"${row.name}" table in schema "${row.schema}"`,
-        description: `Table "${row.name}" in schema "${row.schema}"`,
+        name: `"${row.name}" schema`,
+        description: `Schema "${row.name}"`,
       })),
     };
   } finally {
@@ -113,31 +115,47 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const resourceUrl = new URL(request.params.uri);
 
   const pathComponents = resourceUrl.pathname.split("/");
-  const schemaName = pathComponents.pop()
   const schema = pathComponents.pop();
-  const tableName = pathComponents.pop();
+  const schemaName = pathComponents.pop();
 
   if (schema !== SCHEMA_PATH) {
     throw new Error("Invalid resource URI");
   }
-
   const client = await pool.connect();
+
   try {
-    const result = await client.query([
-      "SELECT column_name, data_type",
-      "FROM information_schema.columns",
-      "WHERE table_name = $1",
-      "AND table_schema = $2"
+    const results = await client.query([
+      "SELECT schemaname AS schema_name,",
+      "tablename AS table_name",
+      "FROM pg_catalog.pg_tables",
+      "WHERE schemaname = $1",
     ].join(" "),
-      [tableName, schemaName],
+      [schemaName],
     );
+
+    let toRet: string = "";
+    for(const result of results.rows){ 
+
+      const {"table_name": tableName, "schema_name": tableSchema} = result;
+      const res = await client.query([
+        "SELECT column_name, data_type",
+        "FROM information_schema.columns",
+        "WHERE table_name = $1",
+        "AND table_schema = $2",
+      ].join(" "),
+        [tableName, tableSchema],
+      );
+      toRet+= `table name: ${tableName},
+            schema name: ${tableSchema},
+            list of column name and datatype:` +  JSON.stringify(res.rows, null, 2);
+    }
 
     return {
       contents: [
         {
           uri: request.params.uri,
           mimeType: "application/json",
-          text: JSON.stringify(result.rows, null, 2),
+          text: JSON.stringify(toRet, null, 2),
         },
       ],
     };
